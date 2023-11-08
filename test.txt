@@ -1,0 +1,1 @@
+1\t2\t3\t=sqrt(l2c1)\n16\t=[l1c4]\t7\t=^(l2c1,l2c3)\n=+(l1c1,sqrt(l2c2))\t=+(12,-12)\t/bin/ls\t=/(l3c1,l3c2)

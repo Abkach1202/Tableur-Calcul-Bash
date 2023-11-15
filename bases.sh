@@ -130,3 +130,77 @@ function variance() {
 function ecartype() {
   racine $(variance "$1" $2 $3 $4 $5)
 }
+
+# Fonction permettant de calculer la médiane à partir d'une cellule à une autre
+# Paramètres : Feuille, Ligne 1, Colonne 1, Ligne 2, Colonne 2
+function mediane() {
+  if (test $2 -gt $4) || (test $2 -eq $4 && test $3 -gt $5); then
+    echo "mauvaise écriture des paramètres de somme !" && exit 4
+  fi
+  local lig col nbcol nbcel data=""
+  nbcol=$(expr $(echo -e "$1" | head -n 1 | egrep -o "$(echo -e "\t")" | wc -l) + 1)
+  lig=$2
+  col=$3
+  while test $lig -ne $4 || test $col -ne $5; do
+    data="$data$(cellule "$1" $lig $col)\n"
+    if test $col -eq $nbcol; then
+      lig=$((lig + 1))
+      col=1
+    else
+      col=$((col + 1))
+    fi
+  done
+  data="$data$(cellule "$1" $lig $col)"
+  nbcel=$(echo "(1 + $nbcol - $3) + (($4 - $2) * $nbcol) - ($nbcol - $5)" | bc -l)
+  echo -e "$data" | sort -n | head -n $(((nbcel + 1) / 2)) | tail -n 1
+}
+
+# Fonction permettant d'avoir le minimum à partir d'une cellule à une autre
+# Paramètres : Feuille, Ligne 1, Colonne 1, Ligne 2, Colonne 2
+function minimum() {
+  if (test $2 -gt $4) || (test $2 -eq $4 && test $3 -gt $5); then
+    echo "mauvaise écriture des paramètres de somme !" && exit 4
+  fi
+  local lig col nbcol min
+  nbcol=$(expr $(echo -e "$1" | head -n 1 | egrep -o "$(echo -e "\t")" | wc -l) + 1)
+  lig=$2
+  col=$3
+  min=$(cellule "$1" $4 $5)
+  while test $lig -ne $4 || test $col -ne $5; do
+    if test $(echo "$(cellule "$1" $lig $col) < $min" | bc) -eq 1; then
+      min=$(cellule "$1" $lig $col)
+    fi
+    if test $col -eq $nbcol; then
+      lig=$((lig + 1))
+      col=1
+    else
+      col=$((col + 1))
+    fi
+  done
+  echo $min
+}
+
+# Fonction permettant d'avoir le minimum à partir d'une cellule à une autre
+# Paramètres : Feuille, Ligne 1, Colonne 1, Ligne 2, Colonne 2
+function maximum() {
+  if (test $2 -gt $4) || (test $2 -eq $4 && test $3 -gt $5); then
+    echo "mauvaise écriture des paramètres de somme !" && exit 4
+  fi
+  local lig col nbcol max
+  nbcol=$(expr $(echo -e "$1" | head -n 1 | egrep -o "$(echo -e "\t")" | wc -l) + 1)
+  lig=$2
+  col=$3
+  max=$(cellule "$1" $4 $5)
+  while test $lig -ne $4 || test $col -ne $5; do
+    if test $(echo "$(cellule "$1" $lig $col) > $max" | bc) -eq 1; then
+      max=$(cellule "$1" $lig $col)
+    fi
+    if test $col -eq $nbcol; then
+      lig=$((lig + 1))
+      col=1
+    else
+      col=$((col + 1))
+    fi
+  done
+  echo $max
+}

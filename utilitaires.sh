@@ -205,6 +205,18 @@ function execute_fonction() {
     nouv_feuille=$(Traite_intervalle_cellule "$nouv_feuille" $(ligne_colonne $param1) $(ligne_colonne $param2))
     res=$(ecartype "$nouv_feuille" $(ligne_colonne $param1) $(ligne_colonne $param2))
     ;;
+  "mediane")
+    nouv_feuille=$(Traite_intervalle_cellule "$nouv_feuille" $(ligne_colonne $param1) $(ligne_colonne $param2))
+    res=$(mediane "$nouv_feuille" $(ligne_colonne $param1) $(ligne_colonne $param2))
+    ;;
+  "min")
+    nouv_feuille=$(Traite_intervalle_cellule "$nouv_feuille" $(ligne_colonne $param1) $(ligne_colonne $param2))
+    res=$(minimum "$nouv_feuille" $(ligne_colonne $param1) $(ligne_colonne $param2))
+    ;;
+  "max")
+    nouv_feuille=$(Traite_intervalle_cellule "$nouv_feuille" $(ligne_colonne $param1) $(ligne_colonne $param2))
+    res=$(maximum "$nouv_feuille" $(ligne_colonne $param1) $(ligne_colonne $param2))
+    ;;
   *)
     echo "$fonc ne correspond à aucune fonction !"
     exit 102

@@ -1,79 +1,22 @@
 #!/bin/bash
 
-# Fonction affichant la valeur de la cellule dans la feuille
-# Paramètres : Feuille, Numéro de Ligne, Numéro de Colonne
-function cellule() {
-  local row=$(echo -e "$1" | head -n $2 | tail -n 1)
-  echo -e "$row" | cut -f $3
-}
-
-# Fonction affichant l'addition de deux valeurs
-# Paramètres : Nombre 1, Nombre 2
-function additionne() {
-  echo "$1 + $2" | bc -l
-}
-
-# Fonction affichant la soustraction de deux valeurs
-# Paramètres : Nombre 1, Nombre 2
-function soustrait() {
-  echo "$1 - $2" | bc -l
-}
-
-# Fonction affichant la multiplication de deux valeurs
-# Paramètres : Nombre 1, Nombre 2
-function multiplie() {
-  echo "$1 * $2" | bc -l
-}
-
-# Fonction affichant la division de deux valeurs
-# Paramètres : Nombre 1, Nombre 2
-function divise() {
-  if test $(echo $2 | cut -d '.' -f 1) -eq 0 && test $(echo $2 | cut -d '.' -f 2) -eq 0; then
-    echo "Division par zéro" && exit 1
-  fi
-  echo "$1 / $2" | bc -l
-}
-
-# Fonction affichant le resultat de val1 puissance val2
-# Paramètres : Nombre 1, Nombre 2
-function puissance() {
-  echo "$1 ^ $2" | bc -l
-}
-
-# Fonction affichant le logarihme népérien de val1
-# Paramètres : Nombre 1
-function logarithme() {
-  if test $(echo $1 | cut -d '.' -f 1) -le 0; then
-    echo "Logarithme d'un nombre négatif" && exit 2
-  fi
-  echo "l($1)" | bc -l
-}
-
-# Fonction affichant l'exponentiation de e à la puissance val1
-# Paramètres : Nombre 1
-function exponentielle() {
-  echo "e($1)" | bc -l
-}
-
-# Fonction affichant l'exponentiation de e à la puissance val1
-# Paramètres : Nombre 1
-function racine() {
-  if test $(echo $1 | cut -d '.' -f 1) -lt 0; then
-    echo "Racine d'un nombre négatif" && exit 3
-  fi
-  echo "sqrt($1)" | bc -l
-}
-
-###################################################################
-
 # Fonction permettant d'avoir la ligne et la colonne d'une notation licj de cellule
 # Paramètre : Chaine contenant la notation licj
 function ligne_colonne() {
   echo "$1" | sed 's/l//' | sed 's/c/ /'
 }
 
+# Fonction permettant de voir si la ligne et la colonne d'une cellule est valide
+# Paramètre : Feuille, Ligne, Colonne
+function valide_ligcol() {
+  local nblig nbcol
+  nblig=$(echo -e "$1" | wc -l)
+  nbcol=$(expr $(echo -e "$1" | head -n 1 | egrep -o "$(echo -e "\t")" | wc -l) + 1)
+  test $2 -le $nblig && test $3 -le $nbcol
+}
+
 # Fonction permettant de remplacer le contenu d'une cellule par un autre
-# Paramètres : Feuille, Numéro de Ligne, Numéro de Colonne, Le nouveau contenu
+# Paramètres : Feuille, Ligne, Colonne, Le nouveau contenu
 function remplace_cellule() {
   local row new_row
   row=$(echo -e "$1" | head -n $2 | tail -n 1)
@@ -116,14 +59,14 @@ function nom_parametres() {
     fi
   done
   if test $ouv -ne 0; then
-    echo -e "\nProblème de parenthésage" && exit 4
+    echo -e "\nProblème de parenthésage" && exit 100
   fi
   echo " $chaine" # On affiche le deuxième paramètre
 }
 
 # Fonction permettant de traiter une cellule de la feuille recursivement
 # Elle retourne une nouvelle feuille avec la cellule mise à jour
-# Paramètres : Feuille, Numéro de Ligne, Numéro de Colonne
+# Paramètres : Feuille, Ligne, Colonne
 function Traite_cellule() {
   # On récupère la cellule
   local calcul="$(cellule "$1" $2 $3)"
@@ -148,11 +91,32 @@ function Traite_cellule() {
   remplace_cellule "$nouv_feuille" $2 $3 "$res"
 }
 
+# Fonction permettant de faire le traitement de tous les cellules entre ceux passées en paramètre
+# Elle retourne la feuille avec toutes les cellules mises à jour
+# Paramètres : Feuille, Ligne 1, Colonne 1, Ligne 2, Colonne 2
+function Traite_intervalle_cellule() {
+  local lig col nbcol nouv_feuille="$1"
+  nbcol=$(expr $(echo -e "$1" | head -n 1 | egrep -o "$(echo -e "\t")" | wc -l) + 1)
+  lig=$2
+  col=$3
+  while test $lig -ne $4 || test $col -ne $5; do
+    nouv_feuille="$(Traite_cellule "$nouv_feuille" $lig $col)"
+    if test $col -eq $nbcol; then
+      lig=$((lig + 1))
+      col=1
+    else
+      col=$((col + 1))
+    fi
+  done
+  nouv_feuille="$(Traite_cellule "$nouv_feuille" $lig $col)"
+  echo -e "$nouv_feuille"
+}
+
 # Fonction permettant d'executer et de faire le calcul d'une fonction
 # Elle retourne la feuille mis à jour suivi du resultat du calcul
 # Paramètres : Feuille, La chaine de la fonction
 function execute_fonction() {
-  local calcul fonc param1 param2 res nblig nouv_feuille=$1
+  local calcul fonc param1 param2 val1 val2 res nblig nouv_feuille="$1"
   # On sépare le nom de la fonction et ses paramètres
   calcul="$(nom_parametres "$2")"
   fonc=$(echo "$calcul" | cut -d ' ' -f 1)   # nom de la fonction
@@ -163,57 +127,87 @@ function execute_fonction() {
   if test $(expr index "$param1" "\([") -ne 0; then
     nblig=$(echo -e "$1" | wc -l)
     res="$(execute_fonction "$nouv_feuille" "$param1")"
-    nouv_feuille=$(echo -e "$res" | head -n $nblig)
-    param1=$(echo -e "$res" | tail -n +$((nblig + 1)))
-  # Si non si il est au format licj, il traite la cellule et garde la valeur
-  elif test $(expr "$param1" : 'l[0-9]\+c[0-9]\+') -ne 0; then
+    nouv_feuille="$(echo -e "$res" | head -n $nblig)"
+    param1="$(echo -e "$res" | tail -n +$((nblig + 1)))"
+  fi
+  # si il est au format licj, on traite la cellule et on garde la valeur
+  if test $(expr "$param1" : '^l[0-9]\+c[0-9]\+$') -ne 0; then
+    if ! valide_ligcol "$nouv_feuille" $(ligne_colonne $param1); then
+      echo "Invalide accès à la feuille"
+      exit 101
+    fi
     nouv_feuille="$(Traite_cellule "$nouv_feuille" $(ligne_colonne "$param1"))"
-    param1=$(cellule "$nouv_feuille" $(ligne_colonne "$param1"))
+    val1="$(cellule "$nouv_feuille" $(ligne_colonne "$param1"))"
+  else
+    val1="$param1"
   fi
 
   # On fait la même chose pour la deuxième paramètre
   if test $(expr index "$param2" "\([") -ne 0; then
     nblig=$(echo -e "$1" | wc -l)
     res="$(execute_fonction "$nouv_feuille" "$param2")"
-    nouv_feuille=$(echo -e "$res" | head -n $nblig)
-    param2=$(echo -e "$res" | tail -n +$((nblig + 1)))
-  elif test $(expr "$param2" : 'l[0-9]\+c[0-9]\+') -ne 0; then
+    nouv_feuille="$(echo -e "$res" | head -n $nblig)"
+    param2="$(echo -e "$res" | tail -n +$((nblig + 1)))"
+  fi
+  if test $(expr "$param2" : '^l[0-9]\+c[0-9]\+$') -ne 0; then
+    if ! valide_ligcol "$nouv_feuille" $(ligne_colonne $param2); then
+      echo "Invalide accès à la feuille"
+      exit 101
+    fi
     nouv_feuille="$(Traite_cellule "$nouv_feuille" $(ligne_colonne "$param2"))"
-    param2=$(cellule "$nouv_feuille" $(ligne_colonne "$param2"))
+    val2="$(cellule "$nouv_feuille" $(ligne_colonne "$param2"))"
+  else
+    val2="$param2"
   fi
 
   # On applique la fonction approprié en fonction de $fonc
   case $fonc in
+  "cellule")
+    res="$val1"
+    ;;
   "+")
-    res=$(additionne $param1 $param2)
+    res=$(additionne $val1 $val2)
     ;;
   "-")
-    res=$(soustrait $param1 $param2)
+    res=$(soustrait $val1 $val2)
     ;;
   "*")
-    res=$(multiplie $param1 $param2)
+    res=$(multiplie $val1 $val2)
     ;;
   "/")
-    res=$(divise $param1 $param2)
+    res=$(divise $val1 $val2)
     ;;
   "^")
-    res=$(puissance $param1 $param2)
+    res=$(puissance $val1 $val2)
     ;;
   "ln")
-    res=$(logarithme $param1)
+    res=$(logarithme $val1)
     ;;
   "e")
-    res=$(exponentielle $param1)
+    res=$(exponentielle $val1)
     ;;
   "sqrt")
-    res=$(racine $param1)
+    res=$(racine $val1)
     ;;
-  "cellule")
-    res="$param1"
+  "somme")
+    nouv_feuille=$(Traite_intervalle_cellule "$nouv_feuille" $(ligne_colonne $param1) $(ligne_colonne $param2))
+    res=$(somme "$nouv_feuille" $(ligne_colonne $param1) $(ligne_colonne $param2))
+    ;;
+  "moyenne")
+    nouv_feuille=$(Traite_intervalle_cellule "$nouv_feuille" $(ligne_colonne $param1) $(ligne_colonne $param2))
+    res=$(moyenne "$nouv_feuille" $(ligne_colonne $param1) $(ligne_colonne $param2))
+    ;;
+  "variance")
+    nouv_feuille=$(Traite_intervalle_cellule "$nouv_feuille" $(ligne_colonne $param1) $(ligne_colonne $param2))
+    res=$(variance "$nouv_feuille" $(ligne_colonne $param1) $(ligne_colonne $param2))
+    ;;
+  "ecartype")
+    nouv_feuille=$(Traite_intervalle_cellule "$nouv_feuille" $(ligne_colonne $param1) $(ligne_colonne $param2))
+    res=$(ecartype "$nouv_feuille" $(ligne_colonne $param1) $(ligne_colonne $param2))
     ;;
   *)
     echo "$fonc ne correspond à aucune fonction !"
-    exit 5
+    exit 102
     ;;
   esac
 
@@ -221,5 +215,3 @@ function execute_fonction() {
   echo "$nouv_feuille"
   echo "$res"
 }
-
-Traite_cellule "$1" 3 4

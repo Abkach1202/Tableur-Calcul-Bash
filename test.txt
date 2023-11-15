@@ -1,1 +1,1 @@
-1\t2\t3\t=sqrt(l2c1)\n16\t=[l1c4]\t7\t=^(l2c1,l2c3)\n=+(l1c1,sqrt(l2c2))\t=+(12,-12)\t/bin/ls\t=/(l3c1,l3c2)
+2\t7\t3\t12\n9\t=[l1c4]\t7\t=^([l2c1],l2c3)\n=somme(l1c1,l2c1)\t=moyenne(l1c1,l2c1)\t=variance(l1c1,l2c1)\t=ecartype(l1c1,l2c1)

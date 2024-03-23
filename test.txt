@@ -1,1 +1,0 @@
-2\t7\t3\t12\n9\t=min(l2c3,l3c3)\t66\t=mediane(l1c1,l2c1)\n=somme(l1c1,l2c1)\t88\t=variance(l1c1,l2c1)\t=max(l1c1,l2c2)
